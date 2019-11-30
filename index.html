@@ -31,24 +31,71 @@
         MOVING: "MOVING"
       };
 
+      // Asset constants
+      const BACKGROUNDS = {
+        PINK: "background-pink"
+      };
+
+      // Sprite constants
+      const SPRITES = {
+        PET: {
+          ROCK: {
+            IDLE: "sprite-rock-idle",
+            MOVING: "sprite-rock-moving"
+          }
+        },
+        UI: {
+          POINTER: {
+            CLICK: "sprite-pointer-click"
+          }
+        }
+      };
+
+      // Animation constants
+      const ANIMATIONS = {
+        PET: {
+          ROCK: {
+            IDLE: "animation-rock-idle",
+            MOVING: "animation-rock-moving"
+          }
+        },
+        UI: {
+          POINTER: {
+            CLICK: "animation-pointer-click"
+          }
+        }
+      };
+
       /**
        * Load all assets here:
        * 1) Pet sprite
        */
       function preload() {
-        this.load.image("background-pink", "assets/backgrounds/pink.png");
-        this.load.spritesheet("sprite-rock-idle", "assets/pets/rock/idle.png", {
-          frameWidth: 38,
-          frameHeight: 34
-        });
-        this.load.spritesheet("sprite-rock-run", "assets/pets/rock/run.png", {
-          frameWidth: 38,
-          frameHeight: 34
-        });
-        this.load.spritesheet("sprite-clicked", "assets/ui/clicked.png", {
-          frameWidth: 32,
-          frameHeight: 32
-        });
+        this.load.image(BACKGROUNDS.PINK, "assets/backgrounds/pink.png");
+        this.load.spritesheet(
+          SPRITES.PET.ROCK.IDLE,
+          "assets/pets/rock/idle.png",
+          {
+            frameWidth: 38,
+            frameHeight: 34
+          }
+        );
+        this.load.spritesheet(
+          SPRITES.PET.ROCK.MOVING,
+          "assets/pets/rock/moving.png",
+          {
+            frameWidth: 38,
+            frameHeight: 34
+          }
+        );
+        this.load.spritesheet(
+          SPRITES.UI.POINTER.CLICK,
+          "assets/ui/clicked.png",
+          {
+            frameWidth: 32,
+            frameHeight: 32
+          }
+        );
       }
 
       /**
@@ -57,16 +104,100 @@
        * 2) Input handling
        */
       function create() {
-        this.add.image(400, 300, "background-pink");
+        /**
+         * @function setupPet Initialize and return pet with sprite, physics and collision with world bounds.
+         * Starts in the center of the canvas
+         */
+        const setupPet = spriteKey => {
+          const newPet = this.physics.add.sprite(400, 300, spriteKey);
+          newPet.setCollideWorldBounds(true);
+
+          return newPet;
+        };
+
+        /**
+         * @function setupCursor Initialize and return an invisible cursor with sprite, physics and animations. Initially placed in (0, 0) of the canvas.
+         */
+        const setupCursor = cursorSprite => {
+          const newCursor = this.physics.add
+            .sprite(0, 0, cursorSprite)
+            .setVisible(false);
+
+          newCursor.on("animationcomplete", () => {
+            newCursor.setVisible(false);
+          });
+
+          return newCursor;
+        };
+
+        /**
+         * @function setupBackground Build background given background tile sprite key.
+         *
+         * TODO: Actually build background from tile sprite
+         */
+        const setupBackground = backgroundTileSpriteKey => {
+          this.add.image(400, 300, backgroundTileSpriteKey);
+        };
+
+        /**
+         * @function defineAnimations Define all animations.
+         *
+         * Trying to keep things cons
+         */
+        const defineAnimations = () => {
+          this.anims.create({
+            key: ANIMATIONS.PET.ROCK.IDLE,
+            frames: this.anims.generateFrameNumbers(SPRITES.PET.ROCK.IDLE, {
+              start: 0,
+              end: 14
+            }),
+            frameRate: 10,
+            repeat: -1
+          });
+          this.anims.create({
+            key: ANIMATIONS.PET.ROCK.MOVING,
+            frames: this.anims.generateFrameNumbers(SPRITES.PET.ROCK.MOVING, {
+              start: 0,
+              end: 14
+            }),
+            frameRate: 15,
+            repeat: -1
+          });
+
+          // Clicked animation
+          this.anims.create({
+            key: ANIMATIONS.UI.POINTER.CLICK,
+            frames: this.anims.generateFrameNumbers(SPRITES.UI.POINTER.CLICK, {
+              start: 0,
+              end: 6
+            }),
+            frameRate: 15
+          });
+        };
+
+        const setupInputHandlers = () => {
+          // Move to mouse and
+          this.input.on(
+            "pointerdown",
+            function(pointer) {
+              cursor.setActive(true);
+              cursor.anims.play(ANIMATIONS.UI.POINTER.CLICK);
+
+              pet.state = PET_STATES.MOVING;
+              cursor.setVisible(true).setPosition(pointer.x, pointer.y);
+
+              this.physics.moveToObject(pet, pointer, 150);
+            },
+            this
+          );
+        };
+
+        setupBackground(BACKGROUNDS.PINK);
 
         // The player and its settings
-        pet = this.physics.add.sprite(400, 300, "sprite-rock-idle");
-        pet.setCollideWorldBounds(true);
+        pet = setupPet("sprite-rock-idle");
 
-        // Invisible cursor
-        cursor = this.physics.add
-          .sprite(0, 0, "sprite-clicked")
-          .setVisible(false);
+        cursor = setupCursor("sprite-clicked");
 
         // Collisions
         this.physics.add.overlap(
@@ -81,54 +212,9 @@
           this
         );
 
-        curson.on("animationcomplete", () => {
-          cursor.setVisible(false);
-        });
+        defineAnimations();
 
-        //  Our player animations, turning, walking left and walking right.
-        this.anims.create({
-          key: "animation-rock-idle",
-          frames: this.anims.generateFrameNumbers("sprite-rock-idle", {
-            start: 0,
-            end: 14
-          }),
-          frameRate: 10,
-          repeat: -1
-        });
-        this.anims.create({
-          key: "animation-rock-run",
-          frames: this.anims.generateFrameNumbers("sprite-rock-run", {
-            start: 0,
-            end: 14
-          }),
-          frameRate: 10,
-          repeat: -1
-        });
-
-        // Clicked animation
-        this.anims.create({
-          key: "animation-clicked",
-          frames: this.anims.generateFrameNumbers("sprite-clicked", {
-            start: 0,
-            end: 6
-          }),
-          frameRate: 15
-        });
-
-        // Move to mouse and
-        this.input.on(
-          "pointerdown",
-          function(pointer) {
-            cursor.setActive(true);
-            cursor.anims.play("animation-clicked");
-
-            pet.state = PET_STATES.MOVING;
-            cursor.setVisible(true).setPosition(pointer.x, pointer.y);
-
-            this.physics.moveToObject(pet, pointer, 200);
-          },
-          this
-        );
+        setupInputHandlers();
       }
 
       /**
@@ -146,10 +232,10 @@
       handlePetAnimation = pet => {
         switch (pet.state) {
           case PET_STATES.MOVING:
-            pet.anims.play("animation-rock-run", true);
+            pet.anims.play(ANIMATIONS.PET.ROCK.MOVING, true);
             break;
           default:
-            pet.anims.play("animation-rock-idle", true);
+            pet.anims.play(ANIMATIONS.PET.ROCK.IDLE, true);
         }
       };
     </script>
