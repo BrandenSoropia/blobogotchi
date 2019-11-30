@@ -23,7 +23,13 @@
       };
 
       let pet = null;
+      let cursor = null;
       const game = new Phaser.Game(config);
+
+      const PET_STATES = {
+        IDLE: "IDLE",
+        MOVING: "MOVING"
+      };
 
       /**
        * Load all assets here:
@@ -31,41 +37,121 @@
        */
       function preload() {
         this.load.image("background-pink", "assets/backgrounds/pink.png");
-        this.load.spritesheet("rock-idle", "assets/pets/rock/idle.png", {
+        this.load.spritesheet("sprite-rock-idle", "assets/pets/rock/idle.png", {
           frameWidth: 38,
           frameHeight: 34
+        });
+        this.load.spritesheet("sprite-rock-run", "assets/pets/rock/run.png", {
+          frameWidth: 38,
+          frameHeight: 34
+        });
+        this.load.spritesheet("sprite-clicked", "assets/ui/clicked.png", {
+          frameWidth: 32,
+          frameHeight: 32
         });
       }
 
       /**
        * Create all game objects and their relationships here:
        * 1) Pet
+       * 2) Input handling
        */
       function create() {
         this.add.image(400, 300, "background-pink");
 
         // The player and its settings
-        pet = this.physics.add.sprite(400, 300, "rock-idle");
+        pet = this.physics.add.sprite(400, 300, "sprite-rock-idle");
         pet.setCollideWorldBounds(true);
+
+        // Invisible cursor
+        cursor = this.physics.add
+          .sprite(0, 0, "sprite-clicked")
+          .setVisible(false);
+
+        // Collisions
+        this.physics.add.overlap(
+          pet,
+          cursor,
+          () => {
+            pet.state = PET_STATES.IDLE;
+            pet.setVelocity(0);
+            cursor.setPosition(0, 0);
+          },
+          null,
+          this
+        );
+
+        curson.on("animationcomplete", () => {
+          cursor.setVisible(false);
+        });
 
         //  Our player animations, turning, walking left and walking right.
         this.anims.create({
-          key: "idle",
-          frames: this.anims.generateFrameNumbers("rock-idle", {
+          key: "animation-rock-idle",
+          frames: this.anims.generateFrameNumbers("sprite-rock-idle", {
             start: 0,
             end: 14
           }),
           frameRate: 10,
           repeat: -1
         });
+        this.anims.create({
+          key: "animation-rock-run",
+          frames: this.anims.generateFrameNumbers("sprite-rock-run", {
+            start: 0,
+            end: 14
+          }),
+          frameRate: 10,
+          repeat: -1
+        });
+
+        // Clicked animation
+        this.anims.create({
+          key: "animation-clicked",
+          frames: this.anims.generateFrameNumbers("sprite-clicked", {
+            start: 0,
+            end: 6
+          }),
+          frameRate: 15
+        });
+
+        // Move to mouse and
+        this.input.on(
+          "pointerdown",
+          function(pointer) {
+            cursor.setActive(true);
+            cursor.anims.play("animation-clicked");
+
+            pet.state = PET_STATES.MOVING;
+            cursor.setVisible(true).setPosition(pointer.x, pointer.y);
+
+            this.physics.moveToObject(pet, pointer, 200);
+          },
+          this
+        );
       }
 
       /**
        *  Handle all interactions here
        */
       function update() {
-        pet.anims.play("idle", true);
+        handlePetAnimation(pet);
       }
+
+      /**
+       * @function handlePetAnimation Apply pet's animation depending on their state.
+       *
+       * There should be an animation for each state.
+       */
+      handlePetAnimation = pet => {
+        switch (pet.state) {
+          case PET_STATES.MOVING:
+            pet.anims.play("animation-rock-run", true);
+            break;
+          default:
+            pet.anims.play("animation-rock-idle", true);
+        }
+      };
     </script>
   </body>
 </html>
