@@ -18,9 +18,10 @@ Game should be up and running on localhost:8080! 🎉
 
 ✅ Eating with animations
 
+✅ Nice, simple background
+
 TODO:
 
-- Nice, simple background
 - Be able to pet!
 - Drag and drop a variety of food
 - Somehow show pet name!

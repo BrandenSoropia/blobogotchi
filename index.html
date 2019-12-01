@@ -156,12 +156,23 @@
       };
 
       /**
-       * @function setupBackground Build background given background tile sprite key.
+       * @function setupTileBackground Build background given background tile sprite key.
        *
-       * TODO: Actually build background from tile sprite
+       * I figure that the create Game Objects don't need to be returned since they'll only be set once.
        */
-      const setupBackground = (backgroundTileSpriteKey, _this) => {
-        _this.add.image(400, 300, backgroundTileSpriteKey);
+      const setupTileBackground = (backgroundTileSpriteKey, _this) => {
+        const container = _this.add
+          .container(400, 300)
+          .setName("tile-background-container");
+        const tileSprite = _this.add.tileSprite(
+          0,
+          0,
+          800,
+          600,
+          BACKGROUNDS.PINK
+        );
+
+        container.add(tileSprite);
       };
 
       const setupInputHandlers = _this => {
@@ -361,7 +372,7 @@
        * 2) Input handling
        */
       function create() {
-        setupBackground(BACKGROUNDS.PINK, this);
+        setupTileBackground(BACKGROUNDS.PINK, this);
         defineAnimations(this);
 
         // The player and its settings
