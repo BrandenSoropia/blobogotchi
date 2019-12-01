@@ -48,9 +48,10 @@ To do all these things in one function, use `createPet` given a specific `petCon
 
 ✅ Cleaned up Pet a bit, less confusing hopefully!
 
+✅ Cleaned up Food a bit too!
+
 TODO:
 
-- Clean up Food into more reusable code! (it's super confusing ATM)
 - Be able to pet!
 - Drag and drop a variety of food
 - Somehow show pet name!

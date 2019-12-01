@@ -27,6 +27,11 @@
       let food = null;
       const game = new Phaser.Game(config);
 
+      // Asset constants
+      const BACKGROUNDS = {
+        PINK: "background-pink"
+      };
+
       // Describes all possible states any pet can have
       const PET_STATES = {
         IDLE: "IDLE",
@@ -40,9 +45,10 @@
         EATEN: "EATEN"
       };
 
-      // Asset constants
-      const BACKGROUNDS = {
-        PINK: "background-pink"
+      // I think I need this to help recognize difference Game Objects
+      const GAME_OBJECT_TYPES = {
+        PET: "go-type-pet",
+        FOOD: "go-type-pet"
       };
 
       /**
@@ -83,7 +89,39 @@
           }
         },
         FOOD: {
-          BANANAS: "animation-bananas"
+          BANANAS: {
+            DEFAULT: "animation-bananas"
+          }
+        }
+      };
+
+      // Pet keys to reference PET_CONFIGS
+      const PET_CONFIG_KEYS = {
+        ROCK: "ROCK"
+      };
+
+      // All pet properties defined here
+      const PET_CONFIGS = {
+        ROCK: {
+          sprite: SPRITES.PET.ROCK.IDLE, // Temp default sprite
+          animations: {
+            [PET_STATES.IDLE]: ANIMATIONS.PET.ROCK.IDLE,
+            [PET_STATES.MOVING]: ANIMATIONS.PET.ROCK.MOVING,
+            [PET_STATES.EATING]: ANIMATIONS.PET.ROCK.EATING
+          }
+        }
+      };
+
+      const FOOD_CONFIG_KEYS = {
+        BANANAS: "BANANAS"
+      };
+
+      const FOOD_CONFIG = {
+        BANANAS: {
+          sprite: SPRITES.FOOD.BANANAS,
+          animations: {
+            [FOOD_STATES.DEFAULT]: ANIMATIONS.FOOD.BANANAS.DEFAULT
+          }
         }
       };
 
@@ -123,34 +161,6 @@
         });
       }
 
-      const rockAnimations = {
-        [PET_STATES.IDLE]: ANIMATIONS.PET.ROCK.IDLE,
-        [PET_STATES.MOVING]: ANIMATIONS.PET.ROCK.MOVING,
-        [PET_STATES.EATING]: ANIMATIONS.PET.ROCK.EATING
-      };
-
-      const GAME_OBJECT_TYPES = {
-        PET: "go-type-pet",
-        FOOD: "go-type-pet"
-      };
-
-      // Pet keys to reference PET_CONFIGS
-      const PET_CONFIG_KEYS = {
-        ROCK: "ROCK"
-      };
-
-      // All pet properties defined here
-      const PET_CONFIGS = {
-        ROCK: {
-          sprite: SPRITES.PET.ROCK.IDLE, // Temp default sprite
-          animations: {
-            [PET_STATES.IDLE]: ANIMATIONS.PET.ROCK.IDLE,
-            [PET_STATES.MOVING]: ANIMATIONS.PET.ROCK.MOVING,
-            [PET_STATES.EATING]: ANIMATIONS.PET.ROCK.EATING
-          }
-        }
-      };
-
       /**
        * GAME OBJECT CREATORS
        */
@@ -172,9 +182,11 @@
         _this.input.setDraggable(newPet);
 
         // Setup all related data to specific pet based on id
-        newPet.setData({ type: GAME_OBJECT_TYPES.PET, state: PET_STATES.IDLE });
-
-        newPet.setData({ animations: petConfig.animations });
+        newPet.setData({
+          type: GAME_OBJECT_TYPES.PET,
+          state: PET_STATES.IDLE,
+          animations: petConfig.animations
+        });
 
         newPet.playAnimation = function(animationKey) {
           const animations = this.getData("animations");
@@ -204,16 +216,40 @@
       /**
        * LOAD GAME ASSETS, DEFINE ANIMATIONS, SETUP GAME OBJECTS ETC
        */
-      const setupFood = (fruitSpriteKey, _this) => {
-        const newFruit = _this.physics.add
-          .sprite(200, 300, fruitSpriteKey)
-          .setScale(1.25);
+      const createFood = ({ foodConfigKey, phaser }) => {
+        const foodConfig = FOOD_CONFIG[foodConfigKey];
+        // Create Game Object and turn on phyics and interactions with user
+        const newFood = phaser.physics.add
+          .sprite(200, 300, foodConfig.sprite)
+          .setScale(1.25); // They are a little small so make them bigger without making them ugly
+        newFood.setInteractive({ useHandCursor: true });
+        phaser.input.setDraggable(newFood);
 
-        newFruit.anims.play(ANIMATIONS.FOOD.BANANAS, true);
-        newFruit.setInteractive({ useHandCursor: true });
-        _this.input.setDraggable(newFruit);
+        newFood.setData({
+          type: GAME_OBJECT_TYPES.FOOD,
+          state: FOOD_STATES.DEFAULT,
+          animations: foodConfig.animations
+        });
 
-        return newFruit;
+        newFood.setState = function(newState) {
+          this.setData({ state: newState });
+        }.bind(newFood);
+
+        newFood.getState = function() {
+          return this.getData("state");
+        }.bind(newFood);
+
+        newFood.playAnimation = function(animationKey) {
+          const animations = this.getData("animations");
+
+          this.anims.play(animations[animationKey]);
+        }.bind(newFood);
+
+        newFood.playCurrentStateAnimation = function() {
+          this.playAnimation(this.getData("state"));
+        }.bind(newFood);
+
+        return newFood;
       };
 
       /**
@@ -291,7 +327,7 @@
         });
 
         _this.anims.create({
-          key: ANIMATIONS.FOOD.BANANAS,
+          key: ANIMATIONS.FOOD.BANANAS.DEFAULT,
           frames: _this.anims.generateFrameNumbers(SPRITES.FOOD.BANANAS, {
             start: 0,
             end: 14
@@ -410,11 +446,11 @@
 
       const handleEating = (petEating, objectBeingEaten, _this) => {
         if (petEating.canAct()) {
+          petEating.setVelocity(0);
           petEating.setState(PET_STATES.EATING);
           petEating.playCurrentStateAnimation();
-          petEating.setVelocity(0);
 
-          objectBeingEaten.anims.stop(null, true);
+          objectBeingEaten.anims.stop();
 
           const flashingObjectGraphics = flashingSpriteAnimation({
             objectToAnimate: objectBeingEaten,
@@ -461,11 +497,15 @@
         setupTileBackground(BACKGROUNDS.PINK, this);
         defineAllAnimations(this);
 
-        // The player and its settings
         pet = createPet({ petConfigKey: PET_CONFIG_KEYS.ROCK, _this: this });
         pet.playCurrentStateAnimation();
 
-        food = setupFood(SPRITES.FOOD.BANANAS, this);
+        food = createFood({
+          foodConfigKey: FOOD_CONFIG_KEYS.BANANAS,
+          phaser: this
+        });
+        food.playCurrentStateAnimation();
+
         pointer = setupPointer(SPRITES.UI.POINTER.CLICK, this);
 
         // Collisions
