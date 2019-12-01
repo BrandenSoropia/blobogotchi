@@ -23,13 +23,14 @@
       };
 
       let pet = null;
-      let cursor = null;
+      let pointer = null;
       let food = null;
       const game = new Phaser.Game(config);
 
       const PET_STATES = {
         IDLE: "IDLE",
-        MOVING: "MOVING"
+        MOVING: "MOVING",
+        EATING: "EATING"
       };
 
       // Asset constants
@@ -116,6 +117,9 @@
       }
 
       /**
+       * SETUP GAME ASSETS, ANIMATIONS ETC
+       */
+      /**
        * @function setupPet Initialize and return pet with sprite, physics and collision with world bounds.
        * Starts in the center of the canvas
        */
@@ -137,18 +141,18 @@
       };
 
       /**
-       * @function setupCursor Initialize and return an invisible cursor with sprite, physics and animations. Initially placed in (0, 0) of the canvas.
+       * @function setupPointer Initialize and return an invisible pointer with sprite, physics and animations. Initially placed in (0, 0) of the canvas.
        */
-      const setupCursor = (cursorSprite, _this) => {
-        const newCursor = _this.physics.add
-          .sprite(0, 0, cursorSprite)
+      const setupPointer = (pointerSprite, _this) => {
+        const newPointer = _this.physics.add
+          .sprite(0, 0, pointerSprite)
           .setVisible(false);
 
-        newCursor.on("animationcomplete", () => {
-          newCursor.setVisible(false);
+        newPointer.on("animationcomplete", () => {
+          newPointer.setVisible(false);
         });
 
-        return newCursor;
+        return newPointer;
       };
 
       /**
@@ -158,6 +162,11 @@
        */
       const setupBackground = (backgroundTileSpriteKey, _this) => {
         _this.add.image(400, 300, backgroundTileSpriteKey);
+      };
+
+      const setupInputHandlers = _this => {
+        moveInGamePointerAndAnimateOnClick(_this);
+        movePetToPointerIfIdle(pet, pointer, _this);
       };
 
       /**
@@ -186,10 +195,9 @@
         });
 
         _this.anims.create({
-          key: ANIMATIONS.PET.ROCK.MOVING,
-          frames: _this.anims.generateFrameNumbers(SPRITES.PET.ROCK.MOVING, {
-            start: 0,
-            end: 14
+          key: ANIMATIONS.PET.ROCK.EATING,
+          frames: _this.anims.generateFrameNumbers(SPRITES.PET.ROCK.IDLE, {
+            frames: [14, 12, 14, 10]
           }),
           frameRate: 10,
           repeat: -1
@@ -215,22 +223,138 @@
         });
       };
 
-      const setupInputHandlers = _this => {
-        // Move to mouse and
+      /**
+       * MOVING GAME OBJECTS
+       */
+      const moveInGamePointerAndAnimateOnClick = _this => {
         _this.input.on(
           "pointerdown",
-          function(pointer) {
-            cursor.setActive(true);
-            cursor.anims.play(ANIMATIONS.UI.POINTER.CLICK);
-
-            pet.state = PET_STATES.MOVING;
-            cursor.setVisible(true).setPosition(pointer.x, pointer.y);
-
-            _this.physics.moveToObject(pet, pointer, 150);
+          function(event) {
+            pointer.setVisible(true).setPosition(event.x, event.y);
+            pointer.anims.play(ANIMATIONS.UI.POINTER.CLICK);
           },
           _this
         );
       };
+
+      const movePetToPointerIfIdle = (petToMove, ObjectToMoveTo, _this) => {
+        _this.input.on(
+          "pointerdown",
+          function(pointer) {
+            if (petToMove.state !== PET_STATES.EATING) {
+              petToMove.state = PET_STATES.MOVING;
+
+              _this.physics.moveToObject(petToMove, ObjectToMoveTo, 150);
+            }
+          },
+          _this
+        );
+      };
+
+      /**
+       * OBJECT INTERACTIONS
+       */
+      const defineObjectInteractions = _this => {
+        _this.physics.add.overlap(
+          pet,
+          pointer,
+          () => {
+            pet.state = PET_STATES.IDLE;
+            pet.setVelocity(0);
+            pointer.setPosition(0, 0);
+          },
+          null,
+          _this
+        );
+
+        _this.physics.add.overlap(
+          pet,
+          food,
+          () => {
+            handleEating(pet, food, _this);
+          },
+          null,
+          _this
+        );
+      };
+
+      /**
+       * USER FEEDBACK EFFECTS
+       * (things that help the user see something is happening)
+       */
+      /**
+       * @function flashingSpriteAnimation Create and apply a flashing silhouette over the object using graphics. Return graphics objects.
+       */
+      const flashingSpriteAnimation = ({
+        objectToAnimate,
+        objectSpriteKey,
+        colorInHEX,
+        _this
+      }) => {
+        // Create a graphics only copy of the object, with color
+        const graphics = _this.add
+          .graphics({
+            x: objectToAnimate.x - objectToAnimate.width / 2,
+            y: objectToAnimate.y - objectToAnimate.height / 2
+          })
+          .fillStyle(colorInHEX, 0.75)
+          .setTexture(objectSpriteKey, undefined, 1)
+          .fillRect(0, 0, objectToAnimate.width, objectToAnimate.height);
+
+        // Apply fade-in/out effect on graphics
+        _this.tweens.add({
+          targets: graphics,
+          alpha: 0,
+          ease: "Cubic.easeOut",
+          duration: 350,
+          repeat: -1,
+          yoyo: true
+        });
+
+        return graphics;
+      };
+
+      const handleEating = (petEating, objectBeingEaten, _this) => {
+        if (petEating.state !== PET_STATES.EATING) {
+          petEating.state = PET_STATES.EATING;
+          petEating.setVelocity(0);
+
+          objectBeingEaten.anims.stop(null, true);
+          const flashingObjectGraphics = flashingSpriteAnimation({
+            objectToAnimate: objectBeingEaten,
+            objectSpriteKey: SPRITES.FOOD.BANANAS,
+            colorInHEX: "0xffff00",
+            _this
+          });
+
+          _this.time.delayedCall(
+            3000,
+            destroyObjects,
+            [objectBeingEaten, flashingObjectGraphics],
+            _this
+          );
+
+          _this.time.delayedCall(
+            3000,
+            _pet => {
+              _pet.state = PET_STATES.IDLE;
+            },
+            [petEating],
+            _this
+          );
+        }
+      };
+
+      /**
+       * HELPER FUNCTIONS
+       */
+      /**
+       * @function destroyObjects Useful helper to destroy all given objects
+       */
+      const destroyObjects = (...args) => {
+        args.forEach(arg => arg.destroy());
+      };
+
       /**
        * Create all game objects and their relationships here:
        * 1) Pet
@@ -243,21 +367,10 @@
         // The player and its settings
         pet = setupPet(SPRITES.PET.ROCK.IDLE, this);
         food = setupFood(SPRITES.FOOD.BANANAS, this);
-        cursor = setupCursor(SPRITES.UI.POINTER.CLICK, this);
+        pointer = setupPointer(SPRITES.UI.POINTER.CLICK, this);
 
         // Collisions
-        this.physics.add.overlap(
-          pet,
-          cursor,
-          () => {
-            pet.state = PET_STATES.IDLE;
-            pet.setVelocity(0);
-            cursor.setPosition(0, 0);
-          },
-          null,
-          this
-        );
-
+        defineObjectInteractions(this);
         setupInputHandlers(this);
       }
 
@@ -277,6 +390,9 @@
         switch (pet.state) {
           case PET_STATES.MOVING:
             pet.anims.play(ANIMATIONS.PET.ROCK.MOVING, true);
+            break;
+          case PET_STATES.EATING:
+            pet.anims.play(ANIMATIONS.PET.ROCK.EATING, true);
             break;
           default:
             pet.anims.play(ANIMATIONS.PET.ROCK.IDLE, true);
