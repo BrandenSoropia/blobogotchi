@@ -9,3 +9,19 @@ A web virtual pet game using Phaser 3.
 3. Once installed, navigate to this project's folder in terminal and run `http-server`.
 
 Game should be up and running on localhost:8080! 🎉
+
+# MVP Goals
+
+✅ Animated sprite
+
+✅ Move to clicked area
+
+✅ Eating with animations
+
+TODO:
+
+- Nice, simple background
+- Be able to pet!
+- Drag and drop a variety of food
+- Somehow show pet name!
+- (Optional) Auto-move to dropped food
