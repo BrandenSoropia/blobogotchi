@@ -24,6 +24,7 @@
 
       let pet = null;
       let cursor = null;
+      let food = null;
       const game = new Phaser.Game(config);
 
       const PET_STATES = {
@@ -36,7 +37,9 @@
         PINK: "background-pink"
       };
 
-      // Sprite constants
+      /**
+       * Every time a new sprite sheet is added, its reference key should be added here.
+       */
       const SPRITES = {
         PET: {
           ROCK: {
@@ -48,21 +51,31 @@
           POINTER: {
             CLICK: "sprite-pointer-click"
           }
+        },
+        FOOD: {
+          BANANAS: "sprite-bananas"
         }
       };
 
-      // Animation constants
+      /**
+       * Every time a new animation is added, its reference key should be added here. These
+       * rely on associated SPRITE being defined as well!
+       */
       const ANIMATIONS = {
         PET: {
           ROCK: {
             IDLE: "animation-rock-idle",
-            MOVING: "animation-rock-moving"
+            MOVING: "animation-rock-moving",
+            EATING: "sprite-rock-eating"
           }
         },
         UI: {
           POINTER: {
             CLICK: "animation-pointer-click"
           }
+        },
+        FOOD: {
+          BANANAS: "animation-bananas"
         }
       };
 
@@ -96,108 +109,141 @@
             frameHeight: 32
           }
         );
+        this.load.spritesheet(SPRITES.FOOD.BANANAS, "assets/food/bananas.png", {
+          frameWidth: 32,
+          frameHeight: 32
+        });
       }
 
+      /**
+       * @function setupPet Initialize and return pet with sprite, physics and collision with world bounds.
+       * Starts in the center of the canvas
+       */
+      const setupPet = (spriteKey, _this) => {
+        const newPet = _this.physics.add.sprite(400, 300, spriteKey);
+        newPet.setCollideWorldBounds(true);
+
+        return newPet;
+      };
+
+      const setupFood = (fruitSpriteKey, _this) => {
+        const newFruit = _this.physics.add
+          .sprite(200, 300, fruitSpriteKey)
+          .setScale(1.25);
+
+        newFruit.anims.play(ANIMATIONS.FOOD.BANANAS, true);
+
+        return newFruit;
+      };
+
+      /**
+       * @function setupCursor Initialize and return an invisible cursor with sprite, physics and animations. Initially placed in (0, 0) of the canvas.
+       */
+      const setupCursor = (cursorSprite, _this) => {
+        const newCursor = _this.physics.add
+          .sprite(0, 0, cursorSprite)
+          .setVisible(false);
+
+        newCursor.on("animationcomplete", () => {
+          newCursor.setVisible(false);
+        });
+
+        return newCursor;
+      };
+
+      /**
+       * @function setupBackground Build background given background tile sprite key.
+       *
+       * TODO: Actually build background from tile sprite
+       */
+      const setupBackground = (backgroundTileSpriteKey, _this) => {
+        _this.add.image(400, 300, backgroundTileSpriteKey);
+      };
+
+      /**
+       * @function defineAnimations Define all animations.
+       *
+       * Trying to keep things cons
+       */
+      const defineAnimations = _this => {
+        _this.anims.create({
+          key: ANIMATIONS.PET.ROCK.IDLE,
+          frames: _this.anims.generateFrameNumbers(SPRITES.PET.ROCK.IDLE, {
+            start: 0,
+            end: 14
+          }),
+          frameRate: 10,
+          repeat: -1
+        });
+        _this.anims.create({
+          key: ANIMATIONS.PET.ROCK.MOVING,
+          frames: _this.anims.generateFrameNumbers(SPRITES.PET.ROCK.MOVING, {
+            start: 0,
+            end: 14
+          }),
+          frameRate: 10,
+          repeat: -1
+        });
+
+        _this.anims.create({
+          key: ANIMATIONS.PET.ROCK.MOVING,
+          frames: _this.anims.generateFrameNumbers(SPRITES.PET.ROCK.MOVING, {
+            start: 0,
+            end: 14
+          }),
+          frameRate: 10,
+          repeat: -1
+        });
+
+        _this.anims.create({
+          key: ANIMATIONS.FOOD.BANANAS,
+          frames: _this.anims.generateFrameNumbers(SPRITES.FOOD.BANANAS, {
+            start: 0,
+            end: 14
+          }),
+          frameRate: 10,
+          repeat: -1
+        });
+
+        _this.anims.create({
+          key: ANIMATIONS.UI.POINTER.CLICK,
+          frames: _this.anims.generateFrameNumbers(SPRITES.UI.POINTER.CLICK, {
+            start: 0,
+            end: 6
+          }),
+          frameRate: 15
+        });
+      };
+
+      const setupInputHandlers = _this => {
+        // Move to mouse and
+        _this.input.on(
+          "pointerdown",
+          function(pointer) {
+            cursor.setActive(true);
+            cursor.anims.play(ANIMATIONS.UI.POINTER.CLICK);
+
+            pet.state = PET_STATES.MOVING;
+            cursor.setVisible(true).setPosition(pointer.x, pointer.y);
+
+            _this.physics.moveToObject(pet, pointer, 150);
+          },
+          _this
+        );
+      };
       /**
        * Create all game objects and their relationships here:
        * 1) Pet
        * 2) Input handling
        */
       function create() {
-        /**
-         * @function setupPet Initialize and return pet with sprite, physics and collision with world bounds.
-         * Starts in the center of the canvas
-         */
-        const setupPet = spriteKey => {
-          const newPet = this.physics.add.sprite(400, 300, spriteKey);
-          newPet.setCollideWorldBounds(true);
-
-          return newPet;
-        };
-
-        /**
-         * @function setupCursor Initialize and return an invisible cursor with sprite, physics and animations. Initially placed in (0, 0) of the canvas.
-         */
-        const setupCursor = cursorSprite => {
-          const newCursor = this.physics.add
-            .sprite(0, 0, cursorSprite)
-            .setVisible(false);
-
-          newCursor.on("animationcomplete", () => {
-            newCursor.setVisible(false);
-          });
-
-          return newCursor;
-        };
-
-        /**
-         * @function setupBackground Build background given background tile sprite key.
-         *
-         * TODO: Actually build background from tile sprite
-         */
-        const setupBackground = backgroundTileSpriteKey => {
-          this.add.image(400, 300, backgroundTileSpriteKey);
-        };
-
-        /**
-         * @function defineAnimations Define all animations.
-         *
-         * Trying to keep things cons
-         */
-        const defineAnimations = () => {
-          this.anims.create({
-            key: ANIMATIONS.PET.ROCK.IDLE,
-            frames: this.anims.generateFrameNumbers(SPRITES.PET.ROCK.IDLE, {
-              start: 0,
-              end: 14
-            }),
-            frameRate: 10,
-            repeat: -1
-          });
-          this.anims.create({
-            key: ANIMATIONS.PET.ROCK.MOVING,
-            frames: this.anims.generateFrameNumbers(SPRITES.PET.ROCK.MOVING, {
-              start: 0,
-              end: 14
-            }),
-            frameRate: 15,
-            repeat: -1
-          });
-
-          // Clicked animation
-          this.anims.create({
-            key: ANIMATIONS.UI.POINTER.CLICK,
-            frames: this.anims.generateFrameNumbers(SPRITES.UI.POINTER.CLICK, {
-              start: 0,
-              end: 6
-            }),
-            frameRate: 15
-          });
-        };
-
-        const setupInputHandlers = () => {
-          // Move to mouse and
-          this.input.on(
-            "pointerdown",
-            function(pointer) {
-              cursor.setActive(true);
-              cursor.anims.play(ANIMATIONS.UI.POINTER.CLICK);
-
-              pet.state = PET_STATES.MOVING;
-              cursor.setVisible(true).setPosition(pointer.x, pointer.y);
-
-              this.physics.moveToObject(pet, pointer, 150);
-            },
-            this
-          );
-        };
-
-        setupBackground(BACKGROUNDS.PINK);
+        setupBackground(BACKGROUNDS.PINK, this);
+        defineAnimations(this);
 
         // The player and its settings
-        pet = setupPet("sprite-rock-idle");
-
-        cursor = setupCursor("sprite-clicked");
+        pet = setupPet(SPRITES.PET.ROCK.IDLE, this);
+        food = setupFood(SPRITES.FOOD.BANANAS, this);
+        cursor = setupCursor(SPRITES.UI.POINTER.CLICK, this);
 
         // Collisions
         this.physics.add.overlap(
@@ -212,9 +258,7 @@
           this
         );
 
-        defineAnimations();
-
-        setupInputHandlers();
+        setupInputHandlers(this);
       }
 
       /**
