@@ -27,10 +27,17 @@
       let food = null;
       const game = new Phaser.Game(config);
 
+      // Describes all possible states any pet can have
       const PET_STATES = {
         IDLE: "IDLE",
         MOVING: "MOVING",
         EATING: "EATING"
+      };
+
+      // Describes all possible states any food can have
+      const FOOD_STATES = {
+        DEFAULT: "DEFAULT",
+        EATEN: "EATEN"
       };
 
       // Asset constants
@@ -67,7 +74,7 @@
           ROCK: {
             IDLE: "animation-rock-idle",
             MOVING: "animation-rock-moving",
-            EATING: "sprite-rock-eating"
+            EATING: "animation-rock-eating"
           }
         },
         UI: {
@@ -116,26 +123,95 @@
         });
       }
 
+      const rockAnimations = {
+        [PET_STATES.IDLE]: ANIMATIONS.PET.ROCK.IDLE,
+        [PET_STATES.MOVING]: ANIMATIONS.PET.ROCK.MOVING,
+        [PET_STATES.EATING]: ANIMATIONS.PET.ROCK.EATING
+      };
+
+      const GAME_OBJECT_TYPES = {
+        PET: "go-type-pet",
+        FOOD: "go-type-pet"
+      };
+
+      // Pet keys to reference PET_CONFIGS
+      const PET_CONFIG_KEYS = {
+        ROCK: "ROCK"
+      };
+
+      // All pet properties defined here
+      const PET_CONFIGS = {
+        ROCK: {
+          sprite: SPRITES.PET.ROCK.IDLE, // Temp default sprite
+          animations: {
+            [PET_STATES.IDLE]: ANIMATIONS.PET.ROCK.IDLE,
+            [PET_STATES.MOVING]: ANIMATIONS.PET.ROCK.MOVING,
+            [PET_STATES.EATING]: ANIMATIONS.PET.ROCK.EATING
+          }
+        }
+      };
+
       /**
-       * SETUP GAME ASSETS, ANIMATIONS ETC
+       * GAME OBJECT CREATORS
        */
       /**
-       * @function setupPet Initialize and return pet with sprite, physics and collision with world bounds.
-       * Starts in the center of the canvas
+       * @function createPet Instantiate and return Game Object for pet with type, state, animations and their associtated
+       * helpers based off of given `petConfigKey`. Placed in the center of the canvas
+       *
+       * Note to self:
+       * My JS chops are not as good as I thought, dealing with `this`, for now `.bind` works.
        */
-      const setupPet = (spriteKey, _this) => {
-        const newPet = _this.physics.add.sprite(400, 300, spriteKey);
+      const createPet = ({ petConfigKey, _this }) => {
+        const petConfig = PET_CONFIGS[petConfigKey];
+
+        const newPet = _this.physics.add.sprite(400, 300, petConfig.sprite);
+
+        // Activate physics with world and interactions with user
         newPet.setCollideWorldBounds(true);
+        newPet.setInteractive({ useHandCursor: true });
+        _this.input.setDraggable(newPet);
+
+        // Setup all related data to specific pet based on id
+        newPet.setData({ type: GAME_OBJECT_TYPES.PET, state: PET_STATES.IDLE });
+
+        newPet.setData({ animations: petConfig.animations });
+
+        newPet.playAnimation = function(animationKey) {
+          const animations = this.getData("animations");
+          this.anims.play(animations[animationKey]);
+        }.bind(newPet);
+
+        newPet.getState = function() {
+          return this.getData("state");
+        }.bind(newPet);
+
+        newPet.setState = function(newState) {
+          this.setData({ state: newState });
+        }.bind(newPet);
+
+        newPet.playCurrentStateAnimation = function() {
+          this.playAnimation(this.getState());
+        }.bind(newPet);
+
+        // Some actions should cause other actions to be ignored. Use this function to determine that!
+        newPet.canAct = function() {
+          return this.getState() !== PET_STATES.EATING;
+        }.bind(newPet);
 
         return newPet;
       };
 
+      /**
+       * LOAD GAME ASSETS, DEFINE ANIMATIONS, SETUP GAME OBJECTS ETC
+       */
       const setupFood = (fruitSpriteKey, _this) => {
         const newFruit = _this.physics.add
           .sprite(200, 300, fruitSpriteKey)
           .setScale(1.25);
 
         newFruit.anims.play(ANIMATIONS.FOOD.BANANAS, true);
+        newFruit.setInteractive({ useHandCursor: true });
+        _this.input.setDraggable(newFruit);
 
         return newFruit;
       };
@@ -181,11 +257,11 @@
       };
 
       /**
-       * @function defineAnimations Define all animations.
+       * @function defineAllAnimations Define all animations.
        *
        * Trying to keep things cons
        */
-      const defineAnimations = _this => {
+      const defineAllAnimations = _this => {
         _this.anims.create({
           key: ANIMATIONS.PET.ROCK.IDLE,
           frames: _this.anims.generateFrameNumbers(SPRITES.PET.ROCK.IDLE, {
@@ -252,8 +328,9 @@
         _this.input.on(
           "pointerdown",
           function(pointer) {
-            if (petToMove.state !== PET_STATES.EATING) {
-              petToMove.state = PET_STATES.MOVING;
+            if (petToMove.canAct()) {
+              pet.setState(PET_STATES.MOVING);
+              pet.playCurrentStateAnimation();
 
               _this.physics.moveToObject(petToMove, ObjectToMoveTo, 150);
             }
@@ -270,8 +347,10 @@
           pet,
           pointer,
           () => {
-            pet.state = PET_STATES.IDLE;
+            pet.setState(PET_STATES.IDLE);
             pet.setVelocity(0);
+            pet.playCurrentStateAnimation();
+
             pointer.setPosition(0, 0);
           },
           null,
@@ -287,6 +366,10 @@
           null,
           _this
         );
+
+        _this.input.on("drag", function(pointer, gameObject, dragX, dragY) {
+          console.log(gameObject);
+        });
       };
 
       /**
@@ -326,11 +409,13 @@
       };
 
       const handleEating = (petEating, objectBeingEaten, _this) => {
-        if (petEating.state !== PET_STATES.EATING) {
-          petEating.state = PET_STATES.EATING;
+        if (petEating.canAct()) {
+          petEating.setState(PET_STATES.EATING);
+          petEating.playCurrentStateAnimation();
           petEating.setVelocity(0);
 
           objectBeingEaten.anims.stop(null, true);
+
           const flashingObjectGraphics = flashingSpriteAnimation({
             objectToAnimate: objectBeingEaten,
             objectSpriteKey: SPRITES.FOOD.BANANAS,
@@ -348,7 +433,8 @@
           _this.time.delayedCall(
             3000,
             _pet => {
-              _pet.state = PET_STATES.IDLE;
+              _pet.setState(PET_STATES.IDLE);
+              _pet.playCurrentStateAnimation();
             },
             [petEating],
             _this
@@ -373,10 +459,12 @@
        */
       function create() {
         setupTileBackground(BACKGROUNDS.PINK, this);
-        defineAnimations(this);
+        defineAllAnimations(this);
 
         // The player and its settings
-        pet = setupPet(SPRITES.PET.ROCK.IDLE, this);
+        pet = createPet({ petConfigKey: PET_CONFIG_KEYS.ROCK, _this: this });
+        pet.playCurrentStateAnimation();
+
         food = setupFood(SPRITES.FOOD.BANANAS, this);
         pointer = setupPointer(SPRITES.UI.POINTER.CLICK, this);
 
@@ -388,27 +476,7 @@
       /**
        *  Handle all interactions here
        */
-      function update() {
-        handlePetAnimation(pet);
-      }
-
-      /**
-       * @function handlePetAnimation Apply pet's animation depending on their state.
-       *
-       * There should be an animation for each state.
-       */
-      handlePetAnimation = pet => {
-        switch (pet.state) {
-          case PET_STATES.MOVING:
-            pet.anims.play(ANIMATIONS.PET.ROCK.MOVING, true);
-            break;
-          case PET_STATES.EATING:
-            pet.anims.play(ANIMATIONS.PET.ROCK.EATING, true);
-            break;
-          default:
-            pet.anims.play(ANIMATIONS.PET.ROCK.IDLE, true);
-        }
-      };
+      function update() {}
     </script>
   </body>
 </html>
