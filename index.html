@@ -4,7 +4,6 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.15.1/dist/phaser-arcade-physics.min.js"></script>
   </head>
   <body>
-    <script type="text/javascript" src="./constants.js"></script>
     <script>
       const config = {
         type: Phaser.AUTO,
@@ -13,7 +12,7 @@
         physics: {
           default: "arcade",
           arcade: {
-            debug: false
+            debug: true
           }
         },
         scene: {
@@ -28,6 +27,108 @@
       let pointer = null;
       let food = null;
       const game = new Phaser.Game(config);
+
+      // Asset constants
+      const BACKGROUNDS = {
+        PINK: "background-pink"
+      };
+
+      // Describes all possible states any pet can have
+      const PET_STATES = {
+        IDLE: "IDLE",
+        MOVING: "MOVING",
+        EATING: "EATING",
+        PETTING: "PETTING"
+      };
+
+      // Describes all possible states any food can have
+      const FOOD_STATES = {
+        DEFAULT: "DEFAULT",
+        EATEN: "EATEN"
+      };
+
+      // I think I need this to help recognize difference Game Objects
+      const GAME_OBJECT_TYPES = {
+        PET: "go-type-pet",
+        FOOD: "go-type-pet"
+      };
+
+      /**
+       * Every time a new sprite sheet is added, its reference key should be added here.
+       */
+      const SPRITES = {
+        PET: {
+          ROCK: {
+            IDLE: "sprite-rock-idle",
+            MOVING: "sprite-rock-moving"
+          }
+        },
+        UI: {
+          POINTER: {
+            CLICK: "sprite-pointer-click"
+          }
+        },
+        FOOD: {
+          BANANAS: "sprite-bananas"
+        }
+      };
+
+      /**
+       * Every time a new animation is added, its reference key should be added here. These
+       * rely on associated SPRITE being defined as well!
+       */
+      const ANIMATIONS = {
+        PET: {
+          ROCK: {
+            IDLE: "animation-rock-idle",
+            MOVING: "animation-rock-moving",
+            EATING: "animation-rock-eating",
+            PETTING: "animation-rock-petting"
+          }
+        },
+        UI: {
+          POINTER: {
+            CLICK: "animation-pointer-click"
+          }
+        },
+        FOOD: {
+          BANANAS: {
+            DEFAULT: "animation-bananas"
+          }
+        }
+      };
+
+      // Pet keys to reference PET_CONFIGS
+      const PET_CONFIG_KEYS = {
+        ROCK: "ROCK"
+      };
+
+      // All pet properties defined here
+      const PET_CONFIGS = {
+        ROCK: {
+          sprite: SPRITES.PET.ROCK.IDLE, // Temp default sprite
+          animations: {
+            hi: "hello",
+            [PET_STATES.IDLE]: ANIMATIONS.PET.ROCK.IDLE,
+            [PET_STATES.MOVING]: ANIMATIONS.PET.ROCK.MOVING,
+            [PET_STATES.EATING]: ANIMATIONS.PET.ROCK.EATING,
+            [PET_STATES.PETTING]: ANIMATIONS.PET.ROCK.PETTING
+          }
+        }
+      };
+
+      const FOOD_CONFIG_KEYS = {
+        BANANAS: "BANANAS"
+      };
+
+      const FOOD_CONFIG = {
+        BANANAS: {
+          sprite: SPRITES.FOOD.BANANAS,
+          animations: {
+            [FOOD_STATES.DEFAULT]: ANIMATIONS.FOOD.BANANAS.DEFAULT
+          }
+        }
+      };
 
       /**
        * Load all assets here:
@@ -83,7 +184,26 @@
         // Activate physics with world and interactions with user
         newPet.setCollideWorldBounds(true);
         newPet.setInteractive({ useHandCursor: true });
-        _this.input.setDraggable(newPet);
+
+        // TODO: FIgure out if animation is playing
+        newPet.on("gameobjectdown", function(pointer) {
+          this.setTint(0xff0000);
+
+          if (newPet.getState() !== PET_STATES.PETTING) {
+            newPet.setState(PET_STATES.PETTING);
+            newPet.playCurrentStateAnimation();
+
+            console.log(newPet);
+          }
+        });
+
+        newPet.on("pointerup", function(pointer) {
+          this.clearTint();
+        });
+
+        newPet.on("pointerout", function(pointer) {
+          this.clearTint();
+        });
 
         // Setup all related data to specific pet based on id
         newPet.setData({
@@ -112,6 +232,10 @@
         // Some actions should cause other actions to be ignored. Use this function to determine that!
         newPet.canAct = function() {
           return this.getState() !== PET_STATES.EATING;
+        }.bind(newPet);
+
+        newPet.getType = function() {
+          return this.getData("type");
         }.bind(newPet);
 
         return newPet;
@@ -153,6 +277,10 @@
           this.playAnimation(this.getData("state"));
         }.bind(newFood);
 
+        newFood.getType = function() {
+          return this.getData("type");
+        }.bind(newFood);
+
         return newFood;
       };
 
@@ -192,7 +320,6 @@
       };
 
       const setupInputHandlers = _this => {
-        moveInGamePointerAndAnimateOnClick(_this);
         movePetToPointerIfIdle(pet, pointer, _this);
       };
 
@@ -231,7 +358,7 @@
         });
 
         _this.anims.create({
-          key: ANIMATIONS.PET.ROCK.EATING,
+          key: ANIMATIONS.PET.ROCK.PETTING,
           frames: _this.anims.generateFrameNumbers(SPRITES.PET.ROCK.IDLE, {
             frames: [14, 13, 12, 11]
           }),
@@ -262,24 +389,31 @@
       /**
        * MOVING GAME OBJECTS
        */
-      const moveInGamePointerAndAnimateOnClick = _this => {
-        _this.input.on(
-          "pointerdown",
-          function(event) {
-            pointer.setVisible(true).setPosition(event.x, event.y);
-            pointer.anims.play(ANIMATIONS.UI.POINTER.CLICK);
-          },
-          _this
-        );
+      const moveInGamePointerAndAnimateOnClick = ({
+        pointerToMove,
+        newCoordinates
+      }) => {
+        pointer
+          .setVisible(true)
+          .setPosition(newCoordinates.x, newCoordinates.y);
+        pointer.anims.play(ANIMATIONS.UI.POINTER.CLICK);
       };
 
       const movePetToPointerIfIdle = (petToMove, ObjectToMoveTo, _this) => {
         _this.input.on(
           "pointerdown",
-          function(pointer) {
+          function(_pointer) {
             if (petToMove.canAct()) {
-              pet.setState(PET_STATES.MOVING);
-              pet.playCurrentStateAnimation();
+              moveInGamePointerAndAnimateOnClick({
+                pointerToMove: pointer,
+                newCoordinates: {
+                  x: _pointer.x,
+                  y: _pointer.y
+                }
+              });
+
+              petToMove.setState(PET_STATES.MOVING);
+              petToMove.playCurrentStateAnimation();
 
               _this.physics.moveToObject(petToMove, ObjectToMoveTo, 150);
             }
@@ -296,8 +430,8 @@
           pet,
           pointer,
           () => {
+            pet.body.stop();
             pet.setState(PET_STATES.IDLE);
-            pet.setVelocity(0);
             pet.playCurrentStateAnimation();
 
             pointer.setPosition(0, 0);
@@ -315,10 +449,6 @@
           null,
           _this
         );
-
-        _this.input.on("drag", function(pointer, gameObject, dragX, dragY) {
-          console.log(gameObject);
-        });
       };
 
       /**
@@ -429,7 +559,9 @@
       /**
        *  Handle all interactions here
        */
-      function update() {}
+      function update() {
+        pet.body.debugBodyColor = pet.body.touching.none ? 0x0099ff : 0xff9900;
+      }
     </script>
   </body>
 </html>
