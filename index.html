@@ -186,7 +186,7 @@
         newPet.setInteractive({ useHandCursor: true });
 
         // TODO: FIgure out if animation is playing
-        newPet.on("gameobjectdown", function(pointer) {
+        newPet.on("pointerdown", function(pointer) {
           this.setTint(0xff0000);
 
           if (newPet.getState() !== PET_STATES.PETTING) {
@@ -320,7 +320,7 @@
       };
 
       const setupInputHandlers = _this => {
-        movePetToPointerIfIdle(pet, pointer, _this);
+        moveInGamePointerAndMovePetTowardsIt(pet, pointer, _this);
       };
 
       /**
@@ -399,11 +399,31 @@
         pointer.anims.play(ANIMATIONS.UI.POINTER.CLICK);
       };
 
-      const movePetToPointerIfIdle = (petToMove, ObjectToMoveTo, _this) => {
+      /**
+       * Note: Must move in game pointer first so pet can be directed towards it.
+       */
+      const moveInGamePointerAndMovePetTowardsIt = (
+        petToMove,
+        ObjectToMoveTo,
+        _this
+      ) => {
         _this.input.on(
           "pointerdown",
           function(_pointer) {
-            if (petToMove.canAct()) {
+            console.log(_pointer);
+            /**
+             * Problem: when pet is clicked, this event is triggered. This causes in game
+             * cursor to be placed and immediately overlapped, causing pet's state to be set to IDLE.
+             * This overwrites on pet click.
+             *
+             * options:
+             * 1) don't do this if clicked on pet
+             * 2) disable all pointerdown's if pet clicked
+             */
+            if (
+              petToMove.canAct() &&
+              !_this.physics.overlap(petToMove, _pointer)
+            ) {
               moveInGamePointerAndAnimateOnClick({
                 pointerToMove: pointer,
                 newCoordinates: {
