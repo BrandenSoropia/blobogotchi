@@ -26,6 +26,7 @@
       let pet = null;
       let pointer = null;
       let food = null;
+      let gameArea = null;
       const game = new Phaser.Game(config);
 
       // Asset constants
@@ -185,25 +186,18 @@
         newPet.setCollideWorldBounds(true);
         newPet.setInteractive({ useHandCursor: true });
 
-        // TODO: FIgure out if animation is playing
-        newPet.on("pointerdown", function(pointer) {
-          this.setTint(0xff0000);
-
-          if (newPet.getState() !== PET_STATES.PETTING) {
-            newPet.setState(PET_STATES.PETTING);
+        // Handle Petting animation and transitions
+        newPet
+          .on("pointerdown", function(pointer) {
+            if (newPet.getState() !== PET_STATES.PETTING) {
+              newPet.setState(PET_STATES.PETTING);
+              newPet.playCurrentStateAnimation();
+            }
+          })
+          .on("pointerup", function() {
+            newPet.setState(PET_STATES.IDLE);
             newPet.playCurrentStateAnimation();
-
-            console.log(newPet);
-          }
-        });
-
-        newPet.on("pointerup", function(pointer) {
-          this.clearTint();
-        });
-
-        newPet.on("pointerout", function(pointer) {
-          this.clearTint();
-        });
+          });
 
         // Setup all related data to specific pet based on id
         newPet.setData({
@@ -362,7 +356,7 @@
           frames: _this.anims.generateFrameNumbers(SPRITES.PET.ROCK.IDLE, {
             frames: [14, 13, 12, 11]
           }),
-          frameRate: 10,
+          frameRate: 5,
           repeat: -1
         });
 
@@ -407,10 +401,9 @@
         ObjectToMoveTo,
         _this
       ) => {
-        _this.input.on(
+        gameArea.on(
           "pointerdown",
           function(_pointer) {
-            console.log(_pointer);
             /**
              * Problem: when pet is clicked, this event is triggered. This causes in game
              * cursor to be placed and immediately overlapped, causing pet's state to be set to IDLE.
@@ -440,6 +433,15 @@
           },
           _this
         );
+      };
+
+      /**
+       * Used to track click within the game display. Required for petting.
+       */
+      const setupGameArea = _this => {
+        gameArea = _this.add.sprite(400, 300, "").setInteractive();
+        gameArea.displayWidth = 800;
+        gameArea.displayHeight = 600;
       };
 
       /**
@@ -557,6 +559,7 @@
        * 2) Input handling
        */
       function create() {
+        setupGameArea(this);
         setupTileBackground(BACKGROUNDS.PINK, this);
         defineAllAnimations(this);
 

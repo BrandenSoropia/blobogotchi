@@ -50,9 +50,10 @@ To do all these things in one function, use `createPet` given a specific `petCon
 
 ✅ Cleaned up Food a bit too!
 
+✅ Be able to pet!
+
 TODO:
 
-- Be able to pet!
 - Drag and drop a variety of food
 - Somehow show pet name!
 - (Optional) Auto-move to dropped food
