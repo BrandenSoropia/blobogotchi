@@ -23,10 +23,10 @@
       };
 
       // Global variables.
-      let pet = null;
-      let pointer = null;
-      let food = null;
-      let gameArea = null;
+      let pet = null; // Individual pet Game Object
+      let movementDestinationMarker = null; // Game Object
+      let fruitsGroup = null; // Group to store all fruits
+      let gameArea = null; // Overlap game window to track clicks for movement
       const game = new Phaser.Game(config);
 
       // Asset constants
@@ -65,12 +65,13 @@
           }
         },
         UI: {
-          POINTER: {
+          MOVEMENT_DESTINATION_MARKER: {
             CLICK: "sprite-pointer-click"
           }
         },
         FOOD: {
-          BANANAS: "sprite-bananas"
+          BANANAS: "sprite-bananas",
+          STRAWBERRY: "sprite-strawberry"
         }
       };
 
@@ -88,12 +89,15 @@
           }
         },
         UI: {
-          POINTER: {
+          MOVEMENT_DESTINATION_MARKER: {
             CLICK: "animation-pointer-click"
           }
         },
         FOOD: {
           BANANAS: {
+            DEFAULT: "animation-bananas"
+          },
+          STRAWBERRY: {
             DEFAULT: "animation-bananas"
           }
         }
@@ -119,7 +123,8 @@
       };
 
       const FOOD_CONFIG_KEYS = {
-        BANANAS: "BANANAS"
+        BANANAS: "BANANAS",
+        STRAWBERRY: "STRAWBERRY"
       };
 
       const FOOD_CONFIG = {
@@ -127,6 +132,12 @@
           sprite: SPRITES.FOOD.BANANAS,
           animations: {
             [FOOD_STATES.DEFAULT]: ANIMATIONS.FOOD.BANANAS.DEFAULT
+          }
+        },
+        STRAWBERRY: {
+          sprite: SPRITES.FOOD.STRAWBERRY,
+          animations: {
+            [FOOD_STATES.DEFAULT]: ANIMATIONS.FOOD.STRAWBERRY.DEFAULT
           }
         }
       };
@@ -154,7 +165,7 @@
           }
         );
         this.load.spritesheet(
-          SPRITES.UI.POINTER.CLICK,
+          SPRITES.UI.MOVEMENT_DESTINATION_MARKER.CLICK,
           "assets/ui/clicked.png",
           {
             frameWidth: 32,
@@ -165,6 +176,14 @@
           frameWidth: 32,
           frameHeight: 32
         });
+        this.load.spritesheet(
+          SPRITES.FOOD.STRAWBERRY,
+          "assets/food/strawberry.png",
+          {
+            frameWidth: 32,
+            frameHeight: 32
+          }
+        );
       }
 
       /**
@@ -188,7 +207,7 @@
 
         // Handle Petting animation and transitions
         newPet
-          .on("pointerdown", function(pointer) {
+          .on("pointerdown", function() {
             if (newPet.getState() !== PET_STATES.PETTING) {
               newPet.setState(PET_STATES.PETTING);
               newPet.playCurrentStateAnimation();
@@ -232,56 +251,72 @@
           return this.getData("type");
         }.bind(newPet);
 
+        newPet.playCurrentStateAnimation();
+
         return newPet;
       };
 
       /**
        * LOAD GAME ASSETS, DEFINE ANIMATIONS, SETUP GAME OBJECTS ETC
        */
-      const createFood = ({ foodConfigKey, phaser }) => {
+      /**
+       * @function createFruit Setup and instantiate a new fruit Game Object complete with
+       * sprite, animations, physics, interactions, draggable, and helpers. Also trigger its
+       * default animation to play on initialization.
+       */
+      const createFruit = ({ foodConfigKey, phaser, coordinates }) => {
         const foodConfig = FOOD_CONFIG[foodConfigKey];
         // Create Game Object and turn on phyics and interactions with user
-        const newFood = phaser.physics.add
-          .sprite(200, 300, foodConfig.sprite)
+        const newFruit = phaser.physics.add
+          .sprite(coordinates.x, coordinates.y, foodConfig.sprite)
           .setScale(1.25); // They are a little small so make them bigger without making them ugly
-        newFood.setInteractive({ useHandCursor: true });
-        phaser.input.setDraggable(newFood);
+        newFruit.setInteractive({ useHandCursor: true });
+        phaser.input.setDraggable(newFruit);
 
-        newFood.setData({
+        newFruit.on("drag", function(_, dragX, dragY) {
+          newFruit.x = dragX;
+          newFruit.y = dragY;
+        });
+
+        newFruit.setData({
           type: GAME_OBJECT_TYPES.FOOD,
           state: FOOD_STATES.DEFAULT,
           animations: foodConfig.animations
         });
 
-        newFood.setState = function(newState) {
+        newFruit.setState = function(newState) {
           this.setData({ state: newState });
-        }.bind(newFood);
+        }.bind(newFruit);
 
-        newFood.getState = function() {
+        newFruit.getState = function() {
           return this.getData("state");
-        }.bind(newFood);
+        }.bind(newFruit);
 
-        newFood.playAnimation = function(animationKey) {
+        newFruit.playAnimation = function(animationKey) {
           const animations = this.getData("animations");
 
           this.anims.play(animations[animationKey]);
-        }.bind(newFood);
+        }.bind(newFruit);
 
-        newFood.playCurrentStateAnimation = function() {
+        newFruit.playCurrentStateAnimation = function() {
           this.playAnimation(this.getData("state"));
-        }.bind(newFood);
+        }.bind(newFruit);
 
-        newFood.getType = function() {
+        newFruit.getType = function() {
           return this.getData("type");
-        }.bind(newFood);
+        }.bind(newFruit);
 
-        return newFood;
+        newFruit.playCurrentStateAnimation();
+
+        return newFruit;
       };
 
       /**
-       * @function setupPointer Initialize and return an invisible pointer with sprite, physics and animations. Initially placed in (0, 0) of the canvas.
+       * @function setupMovementPointer Initialize and return an invisible Game Object with sprite, physics and animations. Initially placed in (0, 0) of the canvas.
+       *
+       * This is used to mark movement destination, and should be moved back to (0, 0) once movement to this point is done.
        */
-      const setupPointer = (pointerSprite, _this) => {
+      const setupMovementPointer = (pointerSprite, _this) => {
         const newPointer = _this.physics.add
           .sprite(0, 0, pointerSprite)
           .setVisible(false);
@@ -314,7 +349,11 @@
       };
 
       const setupInputHandlers = _this => {
-        moveInGamePointerAndMovePetTowardsIt(pet, pointer, _this);
+        moveInGamePointerAndMovePetTowardsIt(
+          pet,
+          movementDestinationMarker,
+          _this
+        );
       };
 
       /**
@@ -371,11 +410,24 @@
         });
 
         _this.anims.create({
-          key: ANIMATIONS.UI.POINTER.CLICK,
-          frames: _this.anims.generateFrameNumbers(SPRITES.UI.POINTER.CLICK, {
+          key: ANIMATIONS.FOOD.STRAWBERRY.DEFAULT,
+          frames: _this.anims.generateFrameNumbers(SPRITES.FOOD.STRAWBERRY, {
             start: 0,
-            end: 6
+            end: 14
           }),
+          frameRate: 10,
+          repeat: -1
+        });
+
+        _this.anims.create({
+          key: ANIMATIONS.UI.MOVEMENT_DESTINATION_MARKER.CLICK,
+          frames: _this.anims.generateFrameNumbers(
+            SPRITES.UI.MOVEMENT_DESTINATION_MARKER.CLICK,
+            {
+              start: 0,
+              end: 6
+            }
+          ),
           frameRate: 15
         });
       };
@@ -384,13 +436,15 @@
        * MOVING GAME OBJECTS
        */
       const moveInGamePointerAndAnimateOnClick = ({
-        pointerToMove,
+        movementDestinationMarker,
         newCoordinates
       }) => {
-        pointer
+        movementDestinationMarker
           .setVisible(true)
           .setPosition(newCoordinates.x, newCoordinates.y);
-        pointer.anims.play(ANIMATIONS.UI.POINTER.CLICK);
+        movementDestinationMarker.anims.play(
+          ANIMATIONS.UI.MOVEMENT_DESTINATION_MARKER.CLICK
+        );
       };
 
       /**
@@ -418,7 +472,7 @@
               !_this.physics.overlap(petToMove, _pointer)
             ) {
               moveInGamePointerAndAnimateOnClick({
-                pointerToMove: pointer,
+                movementDestinationMarker,
                 newCoordinates: {
                   x: _pointer.x,
                   y: _pointer.y
@@ -450,13 +504,13 @@
       const defineObjectInteractions = _this => {
         _this.physics.add.overlap(
           pet,
-          pointer,
-          () => {
-            pet.body.stop();
-            pet.setState(PET_STATES.IDLE);
-            pet.playCurrentStateAnimation();
+          movementDestinationMarker,
+          (overlappedPet, overlappedMovementDestinationMarker) => {
+            overlappedPet.body.stop();
+            overlappedPet.setState(PET_STATES.IDLE);
+            overlappedPet.playCurrentStateAnimation();
 
-            pointer.setPosition(0, 0);
+            overlappedMovementDestinationMarker.setPosition(0, 0);
           },
           null,
           _this
@@ -464,9 +518,9 @@
 
         _this.physics.add.overlap(
           pet,
-          food,
-          () => {
-            handleEating(pet, food, _this);
+          fruitsGroup,
+          (_pet, overlappedFruit) => {
+            handleEating(_pet, overlappedFruit, _this);
           },
           null,
           _this
@@ -564,15 +618,24 @@
         defineAllAnimations(this);
 
         pet = createPet({ petConfigKey: PET_CONFIG_KEYS.ROCK, _this: this });
-        pet.playCurrentStateAnimation();
 
-        food = createFood({
-          foodConfigKey: FOOD_CONFIG_KEYS.BANANAS,
-          phaser: this
-        });
-        food.playCurrentStateAnimation();
+        fruitsGroup = this.add.group();
 
-        pointer = setupPointer(SPRITES.UI.POINTER.CLICK, this);
+        fruitsGroup.add(
+          createFruit({
+            foodConfigKey: FOOD_CONFIG_KEYS.BANANAS,
+            phaser: this,
+            coordinates: {
+              x: 200,
+              y: 300
+            }
+          })
+        );
+
+        movementDestinationMarker = setupMovementPointer(
+          SPRITES.UI.MOVEMENT_DESTINATION_MARKER.CLICK,
+          this
+        );
 
         // Collisions
         defineObjectInteractions(this);
