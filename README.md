@@ -10,6 +10,8 @@ A web virtual pet game using Phaser 3.
 
 Game should be up and running on localhost:8080! 🎉
 
+To enable debug mode and see some helpful outlines around Game Objects and movement direction, in `config`, set `debug: true`. That's it!
+
 # Project Architecture Overview
 
 `SPRITES` and `ANIMATIONS`:
