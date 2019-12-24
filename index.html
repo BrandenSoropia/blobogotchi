@@ -98,7 +98,7 @@
             DEFAULT: "animation-bananas"
           },
           STRAWBERRY: {
-            DEFAULT: "animation-bananas"
+            DEFAULT: "animation-strawberry"
           }
         }
       };
@@ -533,6 +533,8 @@
        */
       /**
        * @function flashingSpriteAnimation Create and apply a flashing silhouette over the object using graphics. Return graphics objects.
+       *
+       * TODO: Fix this to flash using the specific fruit's graphic. ATM this only uses yellow and a banana.
        */
       const flashingSpriteAnimation = ({
         objectToAnimate,
@@ -628,6 +630,17 @@
             coordinates: {
               x: 200,
               y: 300
+            }
+          })
+        );
+
+        fruitsGroup.add(
+          createFruit({
+            foodConfigKey: FOOD_CONFIG_KEYS.STRAWBERRY,
+            phaser: this,
+            coordinates: {
+              x: 300,
+              y: 200
             }
           })
         );
