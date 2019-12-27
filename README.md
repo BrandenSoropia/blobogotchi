@@ -2,6 +2,10 @@
 
 A web virtual pet game using Phaser 3.
 
+End Goal:
+Standard pet care of feeding, cleaning and showing affection, however, word spreads that you are great with pets, that everyone dumps theirs on you! It's
+now your job to take care of all of the unexpected visitors for the week (some amount of in game time). Can you handle these cute critters and make it through the week?
+
 # Setup
 
 1. Make sure you have [node](https://nodejs.org/en/) installed. I recommend using [nvm](https://github.com/nvm-sh/nvm) to make managing node versions painless!
@@ -56,6 +60,14 @@ To do all these things in one function, use `createPet` given a specific `petCon
 
 TODO:
 
+- Pets get hungry and show it! Die if not fed
+- Pets need affection and show it! MVP: Die if not enough
+- Pets can poo
+- Clean up poo
+- Add a different pet
+- Pet will only eat certain food
+- Fix eating fruit animation to use sprite and colour food being eaten
 - Drag and drop a variety of food
-- Somehow show pet name!
+- 1 minute timer, at end count how many pets are alive.
+- (Funny and Fun) Pet tantrums: attack other pets, destroy food, run around and poop everywhere. Stopped by holding/petting.
 - (Optional) Auto-move to dropped food
