@@ -1,6 +1,6 @@
 # blobogotchi
 
-A web virtual pet game using Phaser 3.
+A web virtual pet game using Phaser 3 (using its template project).
 
 End Goal:
 Standard pet care of feeding, cleaning and showing affection, however, word spreads that you are great with pets, that everyone dumps theirs on you! It's
@@ -9,9 +9,8 @@ now your job to take care of all of the unexpected visitors for the week (some a
 # Setup
 
 1. Make sure you have [node](https://nodejs.org/en/) installed. I recommend using [nvm](https://github.com/nvm-sh/nvm) to make managing node versions painless!
-2. Install `http-server` globally by running `npm install -g http-server`. You'll need it for simple static file serving.
-3. Once installed, navigate to this project's folder in terminal and run `http-server`.
-
+2. Run `npm install`
+3. Then run `nom start`
 Game should be up and running on localhost:8080! 🎉
 
 To enable debug mode and see some helpful outlines around Game Objects and movement direction, in `config`, set `debug: true`. That's it!
@@ -71,3 +70,60 @@ TODO:
 - 1 minute timer, at end count how many pets are alive.
 - (Funny and Fun) Pet tantrums: attack other pets, destroy food, run around and poop everywhere. Stopped by holding/petting.
 - (Optional) Auto-move to dropped food
+
+
+# Phaser 3 Webpack Project Template
+
+A Phaser 3 project template with ES6 support via [Babel 7](https://babeljs.io/) and [Webpack 4](https://webpack.js.org/)
+that includes hot-reloading for development and production-ready builds.
+
+Loading images via JavaScript module `import` is also supported.
+
+## Requirements
+
+[Node.js](https://nodejs.org) is required to install dependencies and run scripts via `npm`.
+
+## Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm install` | Install project dependencies |
+| `npm start` | Build project and open web server running project |
+| `npm run build` | Builds code bundle with production settings (minification, uglification, etc..) |
+
+## Writing Code
+
+After cloning the repo, run `npm install` from your project directory. Then, you can start the local development
+server by running `npm start`.
+
+
+After starting the development server with `npm start`, you can edit any files in the `src` folder
+and webpack will automatically recompile and reload your server (available at `http://localhost:8080`
+by default).
+
+## Customizing Template
+
+### Babel
+You can write modern ES6+ JavaScript and Babel will transpile it to a version of JavaScript that you
+want your project to support. The targeted browsers are set in the `.babelrc` file and the default currently
+targets all browsers with total usage over "0.25%" but excludes IE11 and Opera Mini.
+
+  ```
+  "browsers": [
+    ">0.25%",
+    "not ie 11",
+    "not op_mini all"
+  ]
+  ```
+
+### Webpack
+If you want to customize your build, such as adding a new webpack loader or plugin (i.e. for loading CSS or fonts), you can
+modify the `webpack/base.js` file for cross-project changes, or you can modify and/or create
+new configuration files and target them in specific npm tasks inside of `package.json'.
+
+## Deploying Code
+After you run the `npm run build` command, your code will be built into a single bundle located at 
+`dist/bundle.min.js` along with any other assets you project depended. 
+
+If you put the contents of the `dist` folder in a publicly-accessible location (say something like `http://mycoolserver.com`), 
+you should be able to open `http://mycoolserver.com/index.html` and play your game.
